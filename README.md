@@ -65,11 +65,12 @@ Works identically on Windows, macOS, and Linux.
 git clone https://github.com/suryaprakash8870/aircraft.git
 cd aircraft
 
-# 2. Create the backend env file (one-time)
-#    Windows PowerShell:
-Copy-Item backend/.env.example backend/.env
-#    macOS / Linux:
-cp backend/.env.example backend/.env
+# 2. One-time setup (copies backend/.env.example -> backend/.env,
+#    checks Python/Node/Docker versions, prints next-step commands)
+python scripts/setup.py
+#    or use the OS wrapper:
+#       Windows:       .\setup.ps1
+#       macOS / Linux: bash setup.sh
 
 # 3. Bring everything up
 docker-compose up --build
@@ -78,6 +79,15 @@ docker-compose up --build
 #    Frontend:   http://localhost:3000
 #    API docs:   http://localhost:8000/docs
 ```
+
+> The setup script is **idempotent** — it won't overwrite an existing
+> `backend/.env`. To do the env copy manually instead:
+> ```
+> # Windows PowerShell:
+> Copy-Item backend/.env.example backend/.env
+> # macOS / Linux:
+> cp backend/.env.example backend/.env
+> ```
 
 To stop: `Ctrl+C`, then `docker-compose down`.
 To wipe DB: `docker-compose down -v` (deletes the postgres volume).
