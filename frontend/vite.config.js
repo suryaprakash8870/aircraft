@@ -8,8 +8,8 @@ export default defineConfig({
     host: true,          // bind to 0.0.0.0 so LAN devices can reach it
     strictPort: true,
     proxy: {
-      '/api': 'http://localhost:8001',
-      '/uploads': 'http://localhost:8001'
+      '/api': 'http://localhost:8002',
+      '/uploads': 'http://localhost:8002'
     }
   }
 })

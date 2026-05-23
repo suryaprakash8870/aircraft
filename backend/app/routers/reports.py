@@ -290,6 +290,168 @@ async def report_vendor(
     return data
 
 
+async def _build_purchases_dataset(db, start_date, end_date, airport_id, agent_id):
+    query = select(FuelPurchase).options(
+        selectinload(FuelPurchase.fuel_agent), selectinload(FuelPurchase.airport)
+    )
+    if start_date:
+        query = query.where(FuelPurchase.purchase_date >= start_date)
+    if end_date:
+        query = query.where(FuelPurchase.purchase_date <= end_date)
+    if airport_id:
+        query = query.where(FuelPurchase.airport_id == airport_id)
+    if agent_id:
+        query = query.where(FuelPurchase.fuel_agent_id == agent_id)
+    query = query.order_by(FuelPurchase.purchase_date.desc())
+    result = await db.execute(query)
+    records = result.scalars().all()
+    rows = [
+        {
+            "Purchase ID": p.purchase_id,
+            "Date": str(p.purchase_date),
+            "Fuel Type": p.fuel_type,
+            "Quantity (L)": round(p.quantity_purchased, 2),
+            "Rate (per L)": round(p.purchase_rate, 2),
+            "Total Amount": round(p.total_amount, 2),
+            "Payment Status": p.payment_status,
+            "Invoice Number": p.invoice_number or "",
+            "Agent": p.fuel_agent.agent_name if p.fuel_agent else "",
+            "Airport": p.airport.airport_name if p.airport else "",
+            "Airport Code": p.airport.airport_code if p.airport else "",
+        }
+        for p in records
+    ]
+    return "Fuel Purchases Report", rows
+
+
+async def _build_consumption_dataset(db, start_date, end_date, airport_id, aircraft_id):
+    query = select(AircraftFilling).options(
+        selectinload(AircraftFilling.aircraft), selectinload(AircraftFilling.airport)
+    )
+    if start_date:
+        query = query.where(AircraftFilling.filling_datetime >= start_date)
+    if end_date:
+        query = query.where(AircraftFilling.filling_datetime <= end_date)
+    if airport_id:
+        query = query.where(AircraftFilling.airport_id == airport_id)
+    if aircraft_id:
+        query = query.where(AircraftFilling.aircraft_id == aircraft_id)
+    query = query.order_by(AircraftFilling.filling_datetime.desc())
+    result = await db.execute(query)
+    records = result.scalars().all()
+    rows = [
+        {
+            "Filling ID": f.filling_id,
+            "Date/Time": str(f.filling_datetime),
+            "Aircraft": f.aircraft.aircraft_number if f.aircraft else "",
+            "Airline": f.aircraft.airline_name if f.aircraft else "",
+            "Flight No.": f.flight_number or "",
+            "Airport Code": f.airport.airport_code if f.airport else "",
+            "Airport": f.airport.airport_name if f.airport else "",
+            "Quantity (L)": round(f.quantity_filled, 2),
+            "Rate (per L)": round(f.fuel_rate, 2),
+            "Total Cost": round(f.total_cost, 2),
+        }
+        for f in records
+    ]
+    return "Fuel Consumption Report", rows
+
+
+async def _build_airport_stock_dataset(db, airport_id):
+    query = select(FuelStock).options(selectinload(FuelStock.airport))
+    if airport_id:
+        query = query.where(FuelStock.airport_id == airport_id)
+    query = query.order_by(FuelStock.last_updated.desc())
+    result = await db.execute(query)
+    records = result.scalars().all()
+    rows = [
+        {
+            "Airport": s.airport.airport_name if s.airport else "",
+            "Code": s.airport.airport_code if s.airport else "",
+            "Fuel Type": s.fuel_type,
+            "Current Stock (L)": round(s.current_stock, 2),
+            "Capacity (L)": round(s.airport.fuel_storage_capacity, 2) if s.airport else 0,
+            "Last Updated": str(s.last_updated),
+        }
+        for s in records
+    ]
+    return "Airport Stock Report", rows
+
+
+async def _build_aircraft_history_dataset(db, aircraft_id, start_date, end_date):
+    if not aircraft_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="aircraft_id is required for aircraft_history export",
+        )
+    aircraft_result = await db.execute(select(Aircraft).where(Aircraft.id == aircraft_id))
+    aircraft = aircraft_result.scalar_one_or_none()
+    if not aircraft:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aircraft not found")
+    query = select(AircraftFilling).options(selectinload(AircraftFilling.airport)).where(
+        AircraftFilling.aircraft_id == aircraft_id
+    )
+    if start_date:
+        query = query.where(AircraftFilling.filling_datetime >= start_date)
+    if end_date:
+        query = query.where(AircraftFilling.filling_datetime <= end_date)
+    query = query.order_by(AircraftFilling.filling_datetime.desc())
+    result = await db.execute(query)
+    records = result.scalars().all()
+    rows = [
+        {
+            "Filling ID": f.filling_id,
+            "Date/Time": str(f.filling_datetime),
+            "Airport Code": f.airport.airport_code if f.airport else "",
+            "Flight No.": f.flight_number or "",
+            "Quantity (L)": round(f.quantity_filled, 2),
+            "Rate (per L)": round(f.fuel_rate, 2),
+            "Total Cost": round(f.total_cost, 2),
+        }
+        for f in records
+    ]
+    title = f"Aircraft Fuel History - {aircraft.aircraft_number} ({aircraft.airline_name or ''})"
+    return title, rows
+
+
+async def _build_vendor_dataset(db, agent_id, start_date, end_date):
+    if not agent_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="agent_id is required for vendor export",
+        )
+    agent_result = await db.execute(select(FuelAgent).where(FuelAgent.id == agent_id))
+    agent = agent_result.scalar_one_or_none()
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fuel agent not found")
+    query = select(FuelPurchase).options(selectinload(FuelPurchase.airport)).where(
+        FuelPurchase.fuel_agent_id == agent_id
+    )
+    if start_date:
+        query = query.where(FuelPurchase.purchase_date >= start_date)
+    if end_date:
+        query = query.where(FuelPurchase.purchase_date <= end_date)
+    query = query.order_by(FuelPurchase.purchase_date.desc())
+    result = await db.execute(query)
+    records = result.scalars().all()
+    rows = [
+        {
+            "Purchase ID": p.purchase_id,
+            "Date": str(p.purchase_date),
+            "Airport Code": p.airport.airport_code if p.airport else "",
+            "Fuel Type": p.fuel_type,
+            "Quantity (L)": round(p.quantity_purchased, 2),
+            "Rate (per L)": round(p.purchase_rate, 2),
+            "Total Amount": round(p.total_amount, 2),
+            "Payment Status": p.payment_status,
+            "Invoice": p.invoice_number or "",
+        }
+        for p in records
+    ]
+    title = f"Vendor Report - {agent.agent_name}"
+    return title, rows
+
+
 @router.get("/export")
 async def export_report(
     type: str = "purchases",
@@ -298,86 +460,156 @@ async def export_report(
     end_date: Optional[date] = None,
     airport_id: Optional[uuid.UUID] = None,
     agent_id: Optional[uuid.UUID] = None,
+    aircraft_id: Optional[uuid.UUID] = None,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Unified export endpoint.
+
+    type:   purchases | consumption | airport_stock | aircraft_history | vendor
+    format: xlsx | csv | pdf
+    """
+    # Build the dataset for the requested type
     if type == "purchases":
-        query = select(FuelPurchase).options(
-            selectinload(FuelPurchase.fuel_agent), selectinload(FuelPurchase.airport)
-        )
-        if start_date:
-            query = query.where(FuelPurchase.purchase_date >= start_date)
-        if end_date:
-            query = query.where(FuelPurchase.purchase_date <= end_date)
-        if airport_id:
-            query = query.where(FuelPurchase.airport_id == airport_id)
-        if agent_id:
-            query = query.where(FuelPurchase.fuel_agent_id == agent_id)
-        query = query.order_by(FuelPurchase.purchase_date.desc())
-        result = await db.execute(query)
-        records = result.scalars().all()
-
-        data = [
-            {
-                "Purchase ID": p.purchase_id,
-                "Date": str(p.purchase_date),
-                "Fuel Type": p.fuel_type,
-                "Quantity (L)": p.quantity_purchased,
-                "Rate (per L)": p.purchase_rate,
-                "Total Amount": p.total_amount,
-                "Payment Status": p.payment_status,
-                "Invoice Number": p.invoice_number or "",
-                "Agent": p.fuel_agent.agent_name if p.fuel_agent else "",
-                "Airport": p.airport.airport_name if p.airport else "",
-                "Airport Code": p.airport.airport_code if p.airport else "",
-            }
-            for p in records
-        ]
-        filename = f"fuel_purchases_{datetime.now().strftime('%Y%m%d')}.xlsx"
-
+        title, data = await _build_purchases_dataset(db, start_date, end_date, airport_id, agent_id)
     elif type == "consumption":
-        query = select(AircraftFilling).options(
-            selectinload(AircraftFilling.aircraft), selectinload(AircraftFilling.airport)
-        )
-        if start_date:
-            query = query.where(AircraftFilling.filling_datetime >= start_date)
-        if end_date:
-            query = query.where(AircraftFilling.filling_datetime <= end_date)
-        if airport_id:
-            query = query.where(AircraftFilling.airport_id == airport_id)
-        query = query.order_by(AircraftFilling.filling_datetime.desc())
-        result = await db.execute(query)
-        records = result.scalars().all()
-
-        data = [
-            {
-                "Filling ID": f.filling_id,
-                "Date/Time": str(f.filling_datetime),
-                "Aircraft Number": f.aircraft.aircraft_number if f.aircraft else "",
-                "Airline": f.aircraft.airline_name if f.aircraft else "",
-                "Flight Number": f.flight_number or "",
-                "Airport": f.airport.airport_name if f.airport else "",
-                "Airport Code": f.airport.airport_code if f.airport else "",
-                "Quantity Filled (L)": f.quantity_filled,
-                "Fuel Rate": f.fuel_rate,
-                "Total Cost": f.total_cost,
-            }
-            for f in records
-        ]
-        filename = f"fuel_consumption_{datetime.now().strftime('%Y%m%d')}.xlsx"
-
+        title, data = await _build_consumption_dataset(db, start_date, end_date, airport_id, aircraft_id)
+    elif type == "airport_stock":
+        title, data = await _build_airport_stock_dataset(db, airport_id)
+    elif type == "aircraft_history":
+        title, data = await _build_aircraft_history_dataset(db, aircraft_id, start_date, end_date)
+    elif type == "vendor":
+        title, data = await _build_vendor_dataset(db, agent_id, start_date, end_date)
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="type must be 'purchases' or 'consumption'",
+            detail="type must be one of: purchases, consumption, airport_stock, aircraft_history, vendor",
         )
 
+    headers = list(data[0].keys()) if data else []
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    base_name = f"{type}_report_{stamp}"
+
     if format == "xlsx":
-        return _generate_xlsx_response(data, headers=list(data[0].keys()) if data else [], filename=filename)
+        return _generate_xlsx_response(data, headers=headers, filename=f"{base_name}.xlsx")
+    if format == "csv":
+        return _generate_csv_response(data, headers=headers, filename=f"{base_name}.csv")
+    if format == "pdf":
+        return _generate_pdf_response(data, headers=headers, title=title, filename=f"{base_name}.pdf")
 
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail="format must be 'xlsx'",
+        detail="format must be one of: xlsx, csv, pdf",
+    )
+
+
+def _generate_csv_response(data: list, headers: list, filename: str) -> StreamingResponse:
+    import csv as _csv
+
+    buffer = io.StringIO()
+    writer = _csv.DictWriter(buffer, fieldnames=headers, extrasaction="ignore")
+    writer.writeheader()
+    for row in data:
+        writer.writerow(row)
+    csv_bytes = buffer.getvalue().encode("utf-8-sig")  # BOM for Excel compatibility
+    return StreamingResponse(
+        io.BytesIO(csv_bytes),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+def _generate_pdf_response(
+    data: list, headers: list, title: str, filename: str
+) -> StreamingResponse:
+    """Render a landscape-A4 PDF table report with a branded header."""
+    from reportlab.lib import colors as _colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import cm
+    from reportlab.platypus import (
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        leftMargin=1.2 * cm,
+        rightMargin=1.2 * cm,
+        topMargin=1.2 * cm,
+        bottomMargin=1.2 * cm,
+        title=title,
+    )
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "ReportTitle",
+        parent=styles["Title"],
+        textColor=_colors.HexColor("#1a3c6e"),
+        fontSize=18,
+        alignment=0,
+        spaceAfter=4,
+    )
+    sub_style = ParagraphStyle(
+        "ReportSub",
+        parent=styles["Normal"],
+        textColor=_colors.HexColor("#7f8c8d"),
+        fontSize=9,
+        spaceAfter=10,
+    )
+
+    story = [
+        Paragraph(f"AeroFuel Management &mdash; {title}", title_style),
+        Paragraph(
+            f"Generated: {datetime.now().strftime('%d %b %Y, %H:%M')} &nbsp;&nbsp;|&nbsp;&nbsp; Records: {len(data)}",
+            sub_style,
+        ),
+    ]
+
+    if not data:
+        story.append(Paragraph("No records found for the selected filters.", styles["Italic"]))
+    else:
+        # Table data
+        table_data = [headers] + [[str(row.get(h, "")) for h in headers] for row in data]
+
+        # Compute column widths to fit landscape A4 (about 27cm usable)
+        usable = 25.5 * cm
+        col_w = usable / len(headers)
+        col_widths = [col_w] * len(headers)
+
+        tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
+        tbl.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), _colors.HexColor("#1a3c6e")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), _colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 8.5),
+                    ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("FONTSIZE", (0, 1), (-1, -1), 7.5),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [_colors.white, _colors.HexColor("#f5f7fa")]),
+                    ("GRID", (0, 0), (-1, -1), 0.25, _colors.HexColor("#dfe3e8")),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
+        story.append(tbl)
+
+    doc.build(story)
+    buffer.seek(0)
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 

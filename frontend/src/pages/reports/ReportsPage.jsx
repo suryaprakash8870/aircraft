@@ -81,10 +81,13 @@ const FilterBar = ({ filters, setFilters, airports, agents, aircrafts, showAirpo
   </Grid>
 );
 
-const ExportButtons = ({ onExportPdf, onExportCsv, loading }) => (
+const ExportButtons = ({ onExportPdf, onExportCsv, onExportXlsx, loading }) => (
   <Box sx={{ display: 'flex', gap: 1, mb: 2.5, flexWrap: 'wrap' }}>
     <Button variant="outlined" size="small" startIcon={<PictureAsPdfIcon />} onClick={onExportPdf} disabled={loading} color="secondary">
       Export PDF
+    </Button>
+    <Button variant="outlined" size="small" startIcon={<TableChartIcon />} onClick={onExportXlsx} disabled={loading} color="primary">
+      Export Excel
     </Button>
     <Button variant="outlined" size="small" startIcon={<TableChartIcon />} onClick={onExportCsv} disabled={loading} color="success">
       Export CSV
@@ -179,15 +182,35 @@ const ReportsPage = () => {
     }
   };
 
+  // Map tab index to the backend `type` parameter value
+  const TAB_TO_TYPE = ['purchases', 'consumption', 'airport_stock', 'aircraft_history', 'vendor'];
+
   const handleExport = async (format) => {
+    // Tabs 3 (aircraft_history) and 4 (vendor) require an entity filter
+    if (tab === 3 && !filters.aircraft) {
+      dispatch(showSnackbar({ message: 'Select an aircraft first', severity: 'warning' }));
+      return;
+    }
+    if (tab === 4 && !filters.agent) {
+      dispatch(showSnackbar({ message: 'Select an agent first', severity: 'warning' }));
+      return;
+    }
+
     setExportLoading(true);
     try {
-      const params = { ...getParams(), format, tab_type: tabLabels[tab].toLowerCase().replace(/ /g, '_') };
+      const params = {
+        ...getParams(),
+        type: TAB_TO_TYPE[tab],
+        format,
+      };
       const response = await reportsApi.exportReport(params);
-      downloadBlob(response.data, `report-${tabLabels[tab].toLowerCase().replace(/ /g, '-')}.${format}`);
-      dispatch(showSnackbar({ message: 'Report exported!', severity: 'success' }));
-    } catch {
-      dispatch(showSnackbar({ message: 'Export failed', severity: 'error' }));
+      const slug = tabLabels[tab].toLowerCase().replace(/ /g, '-');
+      const ext = format === 'xlsx' ? 'xlsx' : format;
+      downloadBlob(response.data, `report-${slug}.${ext}`);
+      dispatch(showSnackbar({ message: `Exported ${format.toUpperCase()} successfully`, severity: 'success' }));
+    } catch (err) {
+      const detail = err?.response?.data?.detail || err?.message || 'Export failed';
+      dispatch(showSnackbar({ message: typeof detail === 'string' ? detail : 'Export failed', severity: 'error' }));
     } finally {
       setExportLoading(false);
     }
@@ -309,6 +332,7 @@ const ReportsPage = () => {
 
       <ExportButtons
         onExportPdf={() => handleExport('pdf')}
+        onExportXlsx={() => handleExport('xlsx')}
         onExportCsv={() => handleExport('csv')}
         loading={exportLoading}
       />
