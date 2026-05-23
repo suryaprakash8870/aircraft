@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
   // default VITE_ prefix filter so we can read VITE_BACKEND_PROXY_TARGET).
   const env = loadEnv(mode, process.cwd(), '')
 
-  const proxyTarget = env.VITE_BACKEND_PROXY_TARGET || 'http://localhost:8002'
+  const proxyTarget = env.VITE_BACKEND_PROXY_TARGET || 'http://localhost:8000'
 
   return {
     plugins: [react()],
