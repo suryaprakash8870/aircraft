@@ -1,3 +1,4 @@
+import logging
 import os
 from contextlib import asynccontextmanager
 
@@ -24,8 +25,12 @@ from app.routers import (
 
 settings = get_settings()
 
+# Use uvicorn's logger so startup messages match the rest of the server output
+log = logging.getLogger("uvicorn.error")
 
-async def create_default_admin():
+
+async def _seed_default_admin() -> None:
+    """Create the default admin user if it doesn't exist."""
     from sqlalchemy import select
     from app.models.user import User
     from app.utils.auth import hash_password
@@ -34,38 +39,53 @@ async def create_default_admin():
         result = await db.execute(
             select(User).where(User.email == "admin@aerofuel.com")
         )
-        existing = result.scalar_one_or_none()
-        if not existing:
-            admin = User(
-                email="admin@aerofuel.com",
-                username="admin",
-                hashed_password=hash_password("Admin@123"),
-                full_name="System Administrator",
-                role="admin",
-                is_active=True,
-            )
-            db.add(admin)
-            await db.commit()
-            print("Default admin user created: admin@aerofuel.com / Admin@123")
-        else:
-            print("Default admin user already exists.")
+        if result.scalar_one_or_none():
+            log.info("Default admin user already present, skipping seed.")
+            return
+
+        admin = User(
+            email="admin@aerofuel.com",
+            username="admin",
+            hashed_password=hash_password("Admin@123"),
+            full_name="System Administrator",
+            role="admin",
+            is_active=True,
+        )
+        db.add(admin)
+        await db.commit()
+        log.info("Default admin user seeded: admin@aerofuel.com / Admin@123")
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    os.makedirs(os.path.join(settings.UPLOAD_DIR, "invoices"), exist_ok=True)
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+async def lifespan(fastapi_app: FastAPI):
+    # --- Startup ---------------------------------------------------------
+    app_title = fastapi_app.title
+    app_version = fastapi_app.version
+    log.info("Starting %s v%s", app_title, app_version)
 
+    upload_dir = settings.UPLOAD_DIR
+    os.makedirs(os.path.join(upload_dir, "invoices"), exist_ok=True)
+    log.info("Upload directory ready: %s", os.path.abspath(upload_dir))
+
+    # Ensure all SQLAlchemy models are imported so Base.metadata sees them.
+    # NOTE: do not name the lifespan parameter `app` — `import app.models`
+    # below would shadow it and break later references.
     from app.database import Base
-    import app.models  # noqa: F401 - ensure all models registered
+    import app.models  # noqa: F401
 
+    log.info("Initializing database schema (%d tables)", len(Base.metadata.tables))
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    log.info("Database schema ready.")
 
-    await create_default_admin()
+    await _seed_default_admin()
+
+    log.info("%s startup complete.", app_title)
 
     yield
 
+    # --- Shutdown --------------------------------------------------------
+    log.info("Shutting down, disposing database engine.")
     await engine.dispose()
 
 
