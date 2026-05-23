@@ -25,7 +25,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 const defaultValues = {
-  name: '',
+  agent_name: '',
   company_name: '',
   contact_person: '',
   phone: '',
@@ -60,7 +60,7 @@ const FuelAgentFormPage = () => {
   useEffect(() => {
     if (isEdit && currentItem) {
       reset({
-        name: currentItem.name || '',
+        agent_name: currentItem.agent_name || '',
         company_name: currentItem.company_name || '',
         contact_person: currentItem.contact_person || '',
         phone: currentItem.phone || '',
@@ -120,9 +120,9 @@ const FuelAgentFormPage = () => {
                 <TextField
                   fullWidth
                   label="Agent Name *"
-                  {...register('name', { required: 'Agent name is required' })}
-                  error={!!errors.name}
-                  helperText={errors.name?.message}
+                  {...register('agent_name', { required: 'Agent name is required' })}
+                  error={!!errors.agent_name}
+                  helperText={errors.agent_name?.message}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>

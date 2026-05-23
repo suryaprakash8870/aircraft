@@ -85,8 +85,8 @@ const FuelPurchasesPage = () => {
   const columns = [
     { field: 'purchase_id', label: 'Purchase ID', minWidth: 120, render: (val) => val || '-' },
     { field: 'purchase_date', label: 'Date', minWidth: 110, render: (val) => formatDate(val) },
-    { field: 'agent_name', label: 'Fuel Agent', minWidth: 150 },
-    { field: 'airport_name', label: 'Airport', minWidth: 130 },
+    { field: 'fuel_agent', label: 'Fuel Agent', minWidth: 150, render: (_, row) => row.fuel_agent?.agent_name || '-' },
+    { field: 'airport', label: 'Airport', minWidth: 160, render: (_, row) => row.airport ? `${row.airport.airport_name} (${row.airport.airport_code})` : '-' },
     {
       field: 'fuel_type',
       label: 'Fuel Type',
@@ -123,7 +123,7 @@ const FuelPurchasesPage = () => {
           onChange={(e) => { dispatch(setFilters({ airport: e.target.value })); dispatch(setPage(0)); }}
         >
           <MenuItem value="">All Airports</MenuItem>
-          {airports.map((a) => <MenuItem key={a.id} value={a.id}>{a.name} ({a.code})</MenuItem>)}
+          {airports.map((a) => <MenuItem key={a.id} value={a.id}>{a.airport_name} ({a.airport_code})</MenuItem>)}
         </TextField>
       </Grid>
       <Grid item xs={12} sm="auto">
@@ -132,7 +132,7 @@ const FuelPurchasesPage = () => {
           onChange={(e) => { dispatch(setFilters({ agent: e.target.value })); dispatch(setPage(0)); }}
         >
           <MenuItem value="">All Agents</MenuItem>
-          {agents.map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
+          {agents.map((a) => <MenuItem key={a.id} value={a.id}>{a.agent_name}</MenuItem>)}
         </TextField>
       </Grid>
       <Grid item xs={12} sm="auto">

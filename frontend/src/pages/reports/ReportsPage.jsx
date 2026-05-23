@@ -52,7 +52,7 @@ const FilterBar = ({ filters, setFilters, airports, agents, aircrafts, showAirpo
           onChange={(e) => setFilters((p) => ({ ...p, airport: e.target.value }))}
         >
           <MenuItem value="">All Airports</MenuItem>
-          {airports.map((a) => <MenuItem key={a.id} value={a.id}>{a.name} ({a.code})</MenuItem>)}
+          {airports.map((a) => <MenuItem key={a.id} value={a.id}>{a.airport_name} ({a.airport_code})</MenuItem>)}
         </TextField>
       </Grid>
     )}
@@ -63,7 +63,7 @@ const FilterBar = ({ filters, setFilters, airports, agents, aircrafts, showAirpo
           onChange={(e) => setFilters((p) => ({ ...p, agent: e.target.value }))}
         >
           <MenuItem value="">All Agents</MenuItem>
-          {agents.map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
+          {agents.map((a) => <MenuItem key={a.id} value={a.id}>{a.agent_name}</MenuItem>)}
         </TextField>
       </Grid>
     )}

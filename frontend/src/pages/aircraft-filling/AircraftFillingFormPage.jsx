@@ -118,7 +118,7 @@ const AircraftFillingFormPage = () => {
                     <TextField {...field} select fullWidth label="Aircraft *"
                       error={!!errors.aircraft_id} helperText={errors.aircraft_id?.message}>
                       {aircrafts.map((a) => (
-                        <MenuItem key={a.id} value={a.id}>{a.aircraft_number} — {a.model || a.airline_name}</MenuItem>
+                        <MenuItem key={a.id} value={a.id}>{a.aircraft_number} — {a.aircraft_model || a.airline_name}</MenuItem>
                       ))}
                     </TextField>
                   )} />
@@ -128,7 +128,7 @@ const AircraftFillingFormPage = () => {
                   render={({ field }) => (
                     <TextField {...field} select fullWidth label="Airport *"
                       error={!!errors.airport_id} helperText={errors.airport_id?.message}>
-                      {airports.map((a) => <MenuItem key={a.id} value={a.id}>{a.name} ({a.code})</MenuItem>)}
+                      {airports.map((a) => <MenuItem key={a.id} value={a.id}>{a.airport_name} ({a.airport_code})</MenuItem>)}
                     </TextField>
                   )} />
               </Grid>

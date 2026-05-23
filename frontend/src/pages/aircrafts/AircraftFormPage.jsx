@@ -14,7 +14,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 const defaultValues = {
-  aircraft_number: '', model: '', airline_name: '', fuel_capacity: '', status: 'operational',
+  aircraft_number: '', aircraft_model: '', airline_name: '', fuel_capacity: '', status: 'active',
 };
 
 const AircraftFormPage = () => {
@@ -36,10 +36,10 @@ const AircraftFormPage = () => {
     if (isEdit && currentItem) {
       reset({
         aircraft_number: currentItem.aircraft_number || '',
-        model: currentItem.model || '',
+        aircraft_model: currentItem.aircraft_model || '',
         airline_name: currentItem.airline_name || '',
         fuel_capacity: currentItem.fuel_capacity || '',
-        status: currentItem.status || 'operational',
+        status: currentItem.status || 'active',
       });
     }
   }, [currentItem, isEdit, reset]);
@@ -84,7 +84,7 @@ const AircraftFormPage = () => {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField fullWidth label="Aircraft Model" {...register('model')} placeholder="e.g. Boeing 737, Airbus A320" />
+                <TextField fullWidth label="Aircraft Model" {...register('aircraft_model')} placeholder="e.g. Boeing 737, Airbus A320" />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField fullWidth label="Airline Name" {...register('airline_name')} />
@@ -102,9 +102,8 @@ const AircraftFormPage = () => {
                 <Controller name="status" control={control}
                   render={({ field }) => (
                     <TextField {...field} select fullWidth label="Status">
-                      <MenuItem value="operational">Operational</MenuItem>
-                      <MenuItem value="maintenance">Maintenance</MenuItem>
-                      <MenuItem value="grounded">Grounded</MenuItem>
+                      <MenuItem value="active">Active</MenuItem>
+                      <MenuItem value="inactive">Inactive</MenuItem>
                     </TextField>
                   )} />
               </Grid>

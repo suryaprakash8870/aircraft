@@ -40,13 +40,13 @@ const AircraftsPage = () => {
 
   const columns = [
     { field: 'aircraft_number', label: 'Aircraft No.', minWidth: 130 },
-    { field: 'model', label: 'Model', minWidth: 130, render: (v) => v || '-' },
+    { field: 'aircraft_model', label: 'Model', minWidth: 130, render: (v) => v || '-' },
     { field: 'airline_name', label: 'Airline', minWidth: 150, render: (v) => v || '-' },
     { field: 'fuel_capacity', label: 'Fuel Capacity', minWidth: 130, align: 'right', render: (v) => formatLiters(v) },
     {
       field: 'status', label: 'Status', minWidth: 110,
       render: (v) => (
-        <Chip label={v || 'operational'} size="small" color={getStatusColor(v)}
+        <Chip label={v || 'active'} size="small" color={getStatusColor(v)}
           sx={{ fontWeight: 600, height: 22, fontSize: '0.72rem', textTransform: 'capitalize' }} />
       ),
     },

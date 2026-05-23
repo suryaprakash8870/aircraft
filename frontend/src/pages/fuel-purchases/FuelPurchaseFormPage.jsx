@@ -101,7 +101,7 @@ const FuelPurchaseFormPage = () => {
                   render={({ field }) => (
                     <TextField {...field} select fullWidth label="Fuel Agent *"
                       error={!!errors.agent_id} helperText={errors.agent_id?.message}>
-                      {agents.map((a) => <MenuItem key={a.id} value={a.id}>{a.name} — {a.company_name}</MenuItem>)}
+                      {agents.map((a) => <MenuItem key={a.id} value={a.id}>{a.agent_name}{a.company_name ? ` — ${a.company_name}` : ''}</MenuItem>)}
                     </TextField>
                   )} />
               </Grid>
@@ -110,7 +110,7 @@ const FuelPurchaseFormPage = () => {
                   render={({ field }) => (
                     <TextField {...field} select fullWidth label="Airport *"
                       error={!!errors.airport_id} helperText={errors.airport_id?.message}>
-                      {airports.map((a) => <MenuItem key={a.id} value={a.id}>{a.name} ({a.code})</MenuItem>)}
+                      {airports.map((a) => <MenuItem key={a.id} value={a.id}>{a.airport_name} ({a.airport_code})</MenuItem>)}
                     </TextField>
                   )} />
               </Grid>

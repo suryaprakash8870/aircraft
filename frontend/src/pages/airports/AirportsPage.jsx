@@ -45,9 +45,9 @@ const AirportsPage = () => {
   };
 
   const columns = [
-    { field: 'name', label: 'Airport Name', minWidth: 180 },
+    { field: 'airport_name', label: 'Airport Name', minWidth: 180 },
     {
-      field: 'code',
+      field: 'airport_code',
       label: 'Code',
       minWidth: 80,
       render: (val) => (

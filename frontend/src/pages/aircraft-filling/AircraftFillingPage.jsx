@@ -58,13 +58,12 @@ const AircraftFillingPage = () => {
   const columns = [
     { field: 'filling_id', label: 'Filling ID', minWidth: 110, render: (v) => v || '-' },
     { field: 'filling_datetime', label: 'Date/Time', minWidth: 160, render: (v) => formatDateTime(v) },
-    { field: 'aircraft_number', label: 'Aircraft', minWidth: 120 },
-    { field: 'airport_name', label: 'Airport', minWidth: 130 },
+    { field: 'aircraft', label: 'Aircraft', minWidth: 150, render: (_, row) => row.aircraft ? `${row.aircraft.aircraft_number}${row.aircraft.airline_name ? ' / ' + row.aircraft.airline_name : ''}` : '-' },
+    { field: 'airport', label: 'Airport', minWidth: 160, render: (_, row) => row.airport ? `${row.airport.airport_name} (${row.airport.airport_code})` : '-' },
     { field: 'flight_number', label: 'Flight No.', minWidth: 100, render: (v) => v || '-' },
-    { field: 'fuel_quantity', label: 'Quantity', minWidth: 110, align: 'right', render: (v) => formatLiters(v) },
+    { field: 'quantity_filled', label: 'Quantity', minWidth: 110, align: 'right', render: (v) => formatLiters(v) },
     { field: 'fuel_rate', label: 'Rate/L', minWidth: 90, align: 'right', render: (v) => formatCurrency(v) },
     { field: 'total_cost', label: 'Total Cost', minWidth: 120, align: 'right', render: (v) => <Box component="span" sx={{ fontWeight: 700 }}>{formatCurrency(v)}</Box> },
-    { field: 'operator_name', label: 'Operator', minWidth: 120, render: (v) => v || '-' },
   ];
 
   const actions = [

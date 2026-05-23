@@ -62,7 +62,7 @@ const FuelAgentsPage = () => {
   };
 
   const columns = [
-    { field: 'name', label: 'Agent Name', minWidth: 160 },
+    { field: 'agent_name', label: 'Agent Name', minWidth: 160 },
     { field: 'company_name', label: 'Company', minWidth: 160 },
     { field: 'contact_person', label: 'Contact Person', minWidth: 140 },
     { field: 'phone', label: 'Phone', minWidth: 120 },

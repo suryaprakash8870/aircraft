@@ -14,7 +14,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 const defaultValues = {
-  name: '', code: '', city: '', country: 'India', fuel_storage_capacity: '',
+  airport_name: '', airport_code: '', city: '', country: 'India', fuel_storage_capacity: '',
 };
 
 const AirportFormPage = () => {
@@ -35,8 +35,8 @@ const AirportFormPage = () => {
   useEffect(() => {
     if (isEdit && currentItem) {
       reset({
-        name: currentItem.name || '',
-        code: currentItem.code || '',
+        airport_name: currentItem.airport_name || '',
+        airport_code: currentItem.airport_code || '',
         city: currentItem.city || '',
         country: currentItem.country || 'India',
         fuel_storage_capacity: currentItem.fuel_storage_capacity || '',
@@ -45,7 +45,7 @@ const AirportFormPage = () => {
   }, [currentItem, isEdit, reset]);
 
   const onSubmit = async (data) => {
-    const payload = { ...data, code: data.code.toUpperCase(), fuel_storage_capacity: Number(data.fuel_storage_capacity) };
+    const payload = { ...data, airport_code: data.airport_code.toUpperCase(), fuel_storage_capacity: Number(data.fuel_storage_capacity) };
     const result = isEdit
       ? await dispatch(updateAirport({ id, data: payload }))
       : await dispatch(createAirport(payload));
@@ -78,20 +78,20 @@ const AirportFormPage = () => {
               <Grid item xs={12} sm={8}>
                 <TextField
                   fullWidth label="Airport Name *"
-                  {...register('name', { required: 'Airport name is required' })}
-                  error={!!errors.name} helperText={errors.name?.message}
+                  {...register('airport_name', { required: 'Airport name is required' })}
+                  error={!!errors.airport_name} helperText={errors.airport_name?.message}
                 />
               </Grid>
               <Grid item xs={12} sm={4}>
                 <TextField
                   fullWidth label="IATA Code *"
-                  {...register('code', {
+                  {...register('airport_code', {
                     required: 'Airport code is required',
                     pattern: { value: /^[A-Za-z]{3}$/, message: 'Must be 3 letters (e.g. DEL)' },
                   })}
-                  error={!!errors.code} helperText={errors.code?.message}
+                  error={!!errors.airport_code} helperText={errors.airport_code?.message}
                   inputProps={{ maxLength: 3, style: { textTransform: 'uppercase' } }}
-                  onChange={(e) => setValue('code', e.target.value.toUpperCase())}
+                  onChange={(e) => setValue('airport_code', e.target.value.toUpperCase())}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
