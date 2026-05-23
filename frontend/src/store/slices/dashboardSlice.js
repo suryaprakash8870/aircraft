@@ -1,12 +1,29 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { dashboardApi } from '../../api/dashboardApi';
 
+// Backend returns snake_case stats keys + chart arrays of objects.
+// Transform here so DashboardPage keeps reading the camelCase fields
+// it already expects (totalFuelStock, airportStocks, charts.xxx.{labels,values}).
+
+const mapStats = (raw = {}) => ({
+  totalFuelStock: raw.total_stock ?? 0,
+  purchasedThisMonth: raw.monthly_purchased ?? 0,
+  consumedThisMonth: raw.monthly_consumed ?? 0,
+  totalFueled: raw.total_aircraft_fueled ?? 0,
+  airportStocks: raw.airport_stock_summary ?? [],
+});
+
+const toLabelsValues = (arr, labelKey, valueKey) => ({
+  labels: (arr || []).map((r) => r[labelKey]),
+  values: (arr || []).map((r) => Number(r[valueKey] ?? 0)),
+});
+
 export const fetchDashboardStats = createAsyncThunk(
   'dashboard/fetchStats',
   async (_, { rejectWithValue }) => {
     try {
       const response = await dashboardApi.getStats();
-      return response.data;
+      return mapStats(response.data);
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch stats');
     }
@@ -24,10 +41,13 @@ export const fetchDashboardCharts = createAsyncThunk(
         dashboardApi.getAirportUsage(),
       ]);
       return {
-        monthlyPurchase: purchase.data,
-        monthlyConsumption: consumption.data,
-        vendorAnalytics: vendor.data,
-        airportUsage: airportUsage.data,
+        // Each is [{month, quantity[, amount]}, ...] → {labels:[months], values:[quantities]}
+        monthlyPurchase: toLabelsValues(purchase.data, 'month', 'quantity'),
+        monthlyConsumption: toLabelsValues(consumption.data, 'month', 'quantity'),
+        // [{agent_name, total_quantity, total_amount}, ...] → use total_amount for share
+        vendorAnalytics: toLabelsValues(vendor.data, 'agent_name', 'total_amount'),
+        // [{airport_code, stock, consumed}, ...] → show consumed by airport
+        airportUsage: toLabelsValues(airportUsage.data, 'airport_code', 'consumed'),
       };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch chart data');
@@ -40,7 +60,12 @@ export const fetchRecentTransactions = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await dashboardApi.getRecentTransactions();
-      return response.data;
+      // Map reference_id -> reference, keep description as airport-column fallback
+      return (response.data || []).map((tx) => ({
+        ...tx,
+        reference: tx.reference_id,
+        airport: tx.airport || tx.description || '-',
+      }));
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch transactions');
     }
