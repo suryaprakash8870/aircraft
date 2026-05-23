@@ -3,7 +3,10 @@
 A full-stack Aviation Fuel Management System for tracking fuel purchases,
 stock levels, aircraft fueling operations, and generating reports.
 
-> See [PLAN.md](./PLAN.md) for full architecture, database schema, API reference, and implementation status.
+📚 **Documentation**
+- [PLAN.md](./PLAN.md) — architecture, database schema, implementation status
+- [docs/API.md](./docs/API.md) — full API reference with use-case lookup, request/response shapes, examples
+- Live Swagger UI: http://localhost:8000/docs (after starting the backend)
 
 ---
 
