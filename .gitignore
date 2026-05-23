@@ -11,12 +11,13 @@ dist/
 venv/
 env/
 
-# Environment files (NEVER commit secrets) — keep .env.example tracked
-.env
-.env.*
-*.env
-!.env.example
-!.env.*.example
+# Environment files
+# - backend/.env  : ignored (contains JWT SECRET_KEY)
+# - frontend/.env : tracked (only API URL + branding, no secrets)
+backend/.env
+backend/.env.*
+!backend/.env.example
+!backend/.env.*.example
 
 # Alembic
 alembic/versions/*.pyc
