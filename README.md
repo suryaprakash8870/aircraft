@@ -221,8 +221,7 @@ prefixed with `VITE_`. Restart `npm run dev` after editing.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `VITE_API_BASE_URL` | _(empty)_ | When empty, uses same-origin `/api` so Vite proxy / nginx routes to the backend. Set to a full URL (e.g. `http://10.0.0.5:8000/api`) to call the backend directly. |
-| `VITE_BACKEND_PROXY_TARGET` | `http://localhost:8000` | Backend URL the Vite dev-server proxies `/api` and `/uploads` to. Change if your backend runs on a different port. |
+| `VITE_API_BASE_URL` | `http://localhost:8000/api` | Backend API URL the React app calls directly. Leave empty **only** for production Docker builds where nginx serves the bundle and proxies same-origin `/api` to the backend container. |
 | `VITE_APP_NAME` | `AeroFuel` | Branding string. |
 | `VITE_APP_TAGLINE` | `Aviation Fuel Management System` | Branding tagline. |
 | `VITE_DEBUG_API` | `false` | When `true`, axios logs the resolved API base URL to the console. |
