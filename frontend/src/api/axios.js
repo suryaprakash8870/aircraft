@@ -1,11 +1,21 @@
 import axios from 'axios';
 
+// API base URL resolution (in priority order):
+//   1. VITE_API_BASE_URL from .env  (e.g. "http://10.0.0.5:8000/api")
+//   2. Same-origin relative path "/api"  (default — uses Vite proxy / nginx)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim() || '/api';
+const DEBUG_API = import.meta.env.VITE_DEBUG_API === 'true';
+
 const axiosInstance = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+if (DEBUG_API) {
+  console.info(`[axios] API base URL: ${API_BASE_URL}`);
+}
 
 // Request interceptor - attach token
 axiosInstance.interceptors.request.use(

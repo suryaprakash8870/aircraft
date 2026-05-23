@@ -22,6 +22,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_ENV = REPO_ROOT / "backend" / ".env"
 BACKEND_ENV_EXAMPLE = REPO_ROOT / "backend" / ".env.example"
+FRONTEND_ENV = REPO_ROOT / "frontend" / ".env"
+FRONTEND_ENV_EXAMPLE = REPO_ROOT / "frontend" / ".env.example"
 
 
 def info(msg: str) -> None:
@@ -44,20 +46,29 @@ def step(num: int, title: str) -> None:
     print(f"\n[{num}] {title}")
 
 
-def copy_env_file() -> bool:
-    """Copy .env.example -> .env if .env doesn't exist."""
-    if not BACKEND_ENV_EXAMPLE.exists():
-        fail(f"Template not found: {BACKEND_ENV_EXAMPLE}")
+def _copy_one(label: str, template: Path, target: Path) -> bool:
+    """Copy a template .env.example -> .env if target doesn't already exist."""
+    if not template.exists():
+        fail(f"{label} template not found: {template}")
         return False
-
-    if BACKEND_ENV.exists():
-        ok(f".env already exists at {BACKEND_ENV} (left untouched)")
+    if target.exists():
+        ok(f"{label} .env already exists at {target} (left untouched)")
         return True
-
-    shutil.copy2(BACKEND_ENV_EXAMPLE, BACKEND_ENV)
-    ok(f"Created {BACKEND_ENV} from .env.example")
-    info("    Review and update SECRET_KEY before production!")
+    shutil.copy2(template, target)
+    ok(f"Created {target} from {template.name}")
     return True
+
+
+def copy_env_files() -> bool:
+    """Materialize backend/.env and frontend/.env from their templates."""
+    backend_ok = _copy_one("backend", BACKEND_ENV_EXAMPLE, BACKEND_ENV)
+    if backend_ok and not BACKEND_ENV.exists():
+        return False
+    if backend_ok and BACKEND_ENV.exists():
+        info("    Review and update SECRET_KEY before production!")
+
+    frontend_ok = _copy_one("frontend", FRONTEND_ENV_EXAMPLE, FRONTEND_ENV)
+    return backend_ok and frontend_ok
 
 
 def has_command(cmd: str) -> bool:
@@ -164,8 +175,8 @@ def main() -> int:
     print(" AeroFuel Management - First-time Setup")
     print("=" * 60)
 
-    step(1, "Creating backend/.env from template")
-    if not copy_env_file():
+    step(1, "Creating .env files from templates")
+    if not copy_env_files():
         return 1
 
     step(2, "Checking prerequisites")

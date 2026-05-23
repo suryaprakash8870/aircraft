@@ -197,8 +197,12 @@ npm run dev -- --host
 
 ## Environment Variables
 
-The backend reads `.env` automatically via `pydantic-settings`. Copy
-`backend/.env.example` to `backend/.env` and edit values.
+`python scripts/setup.py` copies both env templates for you. To do it by
+hand: copy each `.env.example` next to it as `.env` and edit.
+
+### Backend (`backend/.env`)
+
+Loaded automatically by `pydantic-settings`.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -209,6 +213,19 @@ The backend reads `.env` automatically via `pydantic-settings`. Copy
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Refresh token lifetime. |
 | `COMPANY_NAME` | `AeroFuel Management` | Appears in PDF headers. |
 | `UPLOAD_DIR` | `uploads` | Where uploaded invoice files are stored. |
+
+### Frontend (`frontend/.env`)
+
+Loaded by Vite at dev/build time. Any value sent to the browser **must** be
+prefixed with `VITE_`. Restart `npm run dev` after editing.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_API_BASE_URL` | _(empty)_ | When empty, uses same-origin `/api` so Vite proxy / nginx routes to the backend. Set to a full URL (e.g. `http://10.0.0.5:8000/api`) to call the backend directly. |
+| `VITE_BACKEND_PROXY_TARGET` | `http://localhost:8002` | Backend URL the Vite dev-server proxies `/api` and `/uploads` to. Change if your backend runs on a different port. |
+| `VITE_APP_NAME` | `AeroFuel` | Branding string. |
+| `VITE_APP_TAGLINE` | `Aviation Fuel Management System` | Branding tagline. |
+| `VITE_DEBUG_API` | `false` | When `true`, axios logs the resolved API base URL to the console. |
 
 ### Generating a secure SECRET_KEY
 
