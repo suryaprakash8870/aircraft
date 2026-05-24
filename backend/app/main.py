@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
@@ -94,7 +96,34 @@ app = FastAPI(
     description="Aviation Fuel Management System API",
     version="1.0.0",
     lifespan=lifespan,
+    # Disable FastAPI's default docs/redoc routes; we override them below
+    # with pinned CDN URLs so the pages always render, regardless of which
+    # CDN the latest FastAPI version happens to point at.
+    docs_url=None,
+    redoc_url=None,
 )
+
+
+@app.get("/docs", include_in_schema=False, response_class=HTMLResponse)
+async def custom_swagger_ui():
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=f"{app.title} — Swagger UI",
+        swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js",
+        swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css",
+        swagger_favicon_url="https://fastapi.tiangolo.com/img/favicon.png",
+    )
+
+
+@app.get("/redoc", include_in_schema=False, response_class=HTMLResponse)
+async def custom_redoc():
+    return get_redoc_html(
+        openapi_url=app.openapi_url,
+        title=f"{app.title} — ReDoc",
+        redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@2.1.5/bundles/redoc.standalone.js",
+        redoc_favicon_url="https://fastapi.tiangolo.com/img/favicon.png",
+        with_google_fonts=False,
+    )
 
 app.add_middleware(
     CORSMiddleware,
