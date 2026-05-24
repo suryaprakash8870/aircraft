@@ -39,11 +39,15 @@ class Base(DeclarativeBase):
 
 
 async def get_db():
+    """
+    FastAPI dependency that yields an AsyncSession.
+
+    The `async with` block already handles:
+      - rollback if the route raises any exception
+      - close at the end (success or failure)
+    so we keep the body to a single `yield`. This also keeps the
+    debugger's exception-pause behavior cleaner (no explicit `raise`
+    inside this function for normal validation errors).
+    """
     async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+        yield session
