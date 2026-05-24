@@ -1,0 +1,360 @@
+{
+  "info": {
+    "name": "AeroFuel Management API",
+    "description": "Local backend debugging collection. Login first (saves token), then all other requests auto-attach Bearer auth.\n\nBase URL: {{baseUrl}}   (default: http://localhost:8000)\n\nQuick start:\n1. Import this JSON into Postman (File > Import).\n2. Make sure the variables `baseUrl` and `adminEmail/adminPassword` are correct (Collection > Variables tab).\n3. Run \"Auth / Login (admin)\" — the test script saves access_token + refresh_token to collection variables.\n4. Run any other request — Authorization is set at the Collection level (Bearer {{accessToken}}).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",       "value": "http://localhost:8000",   "type": "string" },
+    { "key": "adminEmail",    "value": "admin@aerofuel.com",      "type": "string" },
+    { "key": "adminPassword", "value": "Admin@123",               "type": "string" },
+    { "key": "accessToken",   "value": "",                        "type": "string" },
+    { "key": "refreshToken",  "value": "",                        "type": "string" },
+    { "key": "agentId",       "value": "",                        "type": "string" },
+    { "key": "airportId",     "value": "",                        "type": "string" },
+    { "key": "aircraftId",    "value": "",                        "type": "string" },
+    { "key": "purchaseId",    "value": "",                        "type": "string" },
+    { "key": "fillingId",     "value": "",                        "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] } }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "  pm.collectionVariables.set('accessToken', json.access_token);",
+                  "  pm.collectionVariables.set('refreshToken', json.refresh_token);",
+                  "  console.log('Tokens saved to collection variables.');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Refresh token",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refresh_token\": \"{{refreshToken}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api", "auth", "refresh"] }
+          }
+        },
+        {
+          "name": "Me (current user)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api", "auth", "logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        { "name": "Stats",                       "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/dashboard/stats",                       "host": ["{{baseUrl}}"], "path": ["api","dashboard","stats"] } } },
+        { "name": "Charts — monthly purchase",  "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/dashboard/charts/monthly-purchase",   "host": ["{{baseUrl}}"], "path": ["api","dashboard","charts","monthly-purchase"] } } },
+        { "name": "Charts — monthly consumption","request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/dashboard/charts/monthly-consumption","host": ["{{baseUrl}}"], "path": ["api","dashboard","charts","monthly-consumption"] } } },
+        { "name": "Charts — vendor analytics",   "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/dashboard/charts/vendor-analytics",  "host": ["{{baseUrl}}"], "path": ["api","dashboard","charts","vendor-analytics"] } } },
+        { "name": "Charts — airport usage",      "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/dashboard/charts/airport-usage",     "host": ["{{baseUrl}}"], "path": ["api","dashboard","charts","airport-usage"] } } },
+        { "name": "Recent transactions",         "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/dashboard/recent-transactions",     "host": ["{{baseUrl}}"], "path": ["api","dashboard","recent-transactions"] } } }
+      ]
+    },
+    {
+      "name": "Fuel Agents",
+      "item": [
+        {
+          "name": "List (paginated)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const items = pm.response.json().items || [];",
+                  "  if (items.length) pm.collectionVariables.set('agentId', items[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/fuel-agents?page=1&page_size=20",
+              "host": ["{{baseUrl}}"], "path": ["api","fuel-agents"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"agent_name\": \"Test Vendor\",\n  \"company_name\": \"Test Aviation Pvt Ltd\",\n  \"contact_person\": \"John Doe\",\n  \"phone\": \"+91-9999999999\",\n  \"email\": \"contact@testvendor.com\",\n  \"address\": \"123 Test Street, Mumbai\",\n  \"gst_number\": \"27AAAAA0000A1Z5\",\n  \"status\": \"active\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/fuel-agents", "host": ["{{baseUrl}}"], "path": ["api","fuel-agents"] }
+          }
+        },
+        { "name": "Get by ID",  "request": { "method": "GET",    "url": { "raw": "{{baseUrl}}/api/fuel-agents/{{agentId}}", "host": ["{{baseUrl}}"], "path": ["api","fuel-agents","{{agentId}}"] } } },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"phone\": \"+91-8888888888\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/fuel-agents/{{agentId}}", "host": ["{{baseUrl}}"], "path": ["api","fuel-agents","{{agentId}}"] }
+          }
+        },
+        { "name": "Delete", "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/api/fuel-agents/{{agentId}}", "host": ["{{baseUrl}}"], "path": ["api","fuel-agents","{{agentId}}"] } } }
+      ]
+    },
+    {
+      "name": "Airports",
+      "item": [
+        {
+          "name": "List",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const items = pm.response.json().items || [];",
+                  "  if (items.length) pm.collectionVariables.set('airportId', items[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/airports?page=1&page_size=20", "host": ["{{baseUrl}}"], "path": ["api","airports"], "query": [{"key":"page","value":"1"},{"key":"page_size","value":"20"}] }
+          }
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"airport_name\": \"Pune International Airport\",\n  \"airport_code\": \"PNQ\",\n  \"city\": \"Pune\",\n  \"country\": \"India\",\n  \"fuel_storage_capacity\": 1000000\n}" },
+            "url": { "raw": "{{baseUrl}}/api/airports", "host": ["{{baseUrl}}"], "path": ["api","airports"] }
+          }
+        },
+        { "name": "Get by ID", "request": { "method": "GET",    "url": { "raw": "{{baseUrl}}/api/airports/{{airportId}}", "host": ["{{baseUrl}}"], "path": ["api","airports","{{airportId}}"] } } },
+        { "name": "Update",    "request": { "method": "PUT",    "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"city\": \"Pune (Updated)\"\n}"}, "url": { "raw": "{{baseUrl}}/api/airports/{{airportId}}", "host": ["{{baseUrl}}"], "path": ["api","airports","{{airportId}}"] } } },
+        { "name": "Delete",    "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/api/airports/{{airportId}}", "host": ["{{baseUrl}}"], "path": ["api","airports","{{airportId}}"] } } }
+      ]
+    },
+    {
+      "name": "Aircrafts",
+      "item": [
+        {
+          "name": "List",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const items = pm.response.json().items || [];",
+                  "  if (items.length) pm.collectionVariables.set('aircraftId', items[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/aircrafts?page=1&page_size=20", "host": ["{{baseUrl}}"], "path": ["api","aircrafts"], "query":[{"key":"page","value":"1"},{"key":"page_size","value":"20"}] } }
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"aircraft_number\": \"VT-TEST\",\n  \"aircraft_model\": \"Boeing 737-800\",\n  \"airline_name\": \"Test Airline\",\n  \"fuel_capacity\": 26000,\n  \"status\": \"active\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/aircrafts", "host": ["{{baseUrl}}"], "path": ["api","aircrafts"] }
+          }
+        },
+        { "name": "Get by ID", "request": { "method": "GET",    "url": { "raw": "{{baseUrl}}/api/aircrafts/{{aircraftId}}", "host": ["{{baseUrl}}"], "path": ["api","aircrafts","{{aircraftId}}"] } } },
+        { "name": "Update",    "request": { "method": "PUT",    "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"status\": \"inactive\"\n}"}, "url": { "raw": "{{baseUrl}}/api/aircrafts/{{aircraftId}}", "host": ["{{baseUrl}}"], "path": ["api","aircrafts","{{aircraftId}}"] } } },
+        { "name": "Delete",    "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/api/aircrafts/{{aircraftId}}", "host": ["{{baseUrl}}"], "path": ["api","aircrafts","{{aircraftId}}"] } } }
+      ]
+    },
+    {
+      "name": "Fuel Purchases",
+      "item": [
+        {
+          "name": "List",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const items = pm.response.json().items || [];",
+                  "  if (items.length) pm.collectionVariables.set('purchaseId', items[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/fuel-purchases?page=1&page_size=20", "host": ["{{baseUrl}}"], "path": ["api","fuel-purchases"], "query":[{"key":"page","value":"1"},{"key":"page_size","value":"20"}] } }
+        },
+        {
+          "name": "Create (auto-updates stock)",
+          "description": "Run after the Fuel Agents 'List' and Airports 'List' so {{agentId}} and {{airportId}} are populated.",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"fuel_agent_id\": \"{{agentId}}\",\n  \"airport_id\": \"{{airportId}}\",\n  \"fuel_type\": \"ATF\",\n  \"quantity_purchased\": 50000,\n  \"purchase_rate\": 98.5,\n  \"purchase_date\": \"2026-05-24\",\n  \"invoice_number\": \"INV-TEST-001\",\n  \"payment_status\": \"paid\",\n  \"remarks\": \"Postman test purchase\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/fuel-purchases", "host": ["{{baseUrl}}"], "path": ["api","fuel-purchases"] }
+          }
+        },
+        { "name": "Get by ID", "request": { "method": "GET",    "url": { "raw": "{{baseUrl}}/api/fuel-purchases/{{purchaseId}}", "host": ["{{baseUrl}}"], "path": ["api","fuel-purchases","{{purchaseId}}"] } } },
+        { "name": "Update",    "request": { "method": "PUT",    "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"payment_status\": \"paid\"\n}"}, "url": { "raw": "{{baseUrl}}/api/fuel-purchases/{{purchaseId}}", "host": ["{{baseUrl}}"], "path": ["api","fuel-purchases","{{purchaseId}}"] } } },
+        { "name": "Delete (reverses stock)", "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/api/fuel-purchases/{{purchaseId}}", "host": ["{{baseUrl}}"], "path": ["api","fuel-purchases","{{purchaseId}}"] } } }
+      ]
+    },
+    {
+      "name": "Fuel Stock",
+      "item": [
+        { "name": "List all",       "request": { "method": "GET",  "url": { "raw": "{{baseUrl}}/api/fuel-stock",                       "host": ["{{baseUrl}}"], "path": ["api","fuel-stock"] } } },
+        { "name": "For one airport","request": { "method": "GET",  "url": { "raw": "{{baseUrl}}/api/fuel-stock/airport/{{airportId}}", "host": ["{{baseUrl}}"], "path": ["api","fuel-stock","airport","{{airportId}}"] } } },
+        {
+          "name": "Manual adjustment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"airport_id\": \"{{airportId}}\",\n  \"fuel_type\": \"ATF\",\n  \"quantity\": -250,\n  \"notes\": \"Postman wastage test\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/fuel-stock/adjustment", "host": ["{{baseUrl}}"], "path": ["api","fuel-stock","adjustment"] }
+          }
+        },
+        { "name": "Logs",           "request": { "method": "GET",  "url": { "raw": "{{baseUrl}}/api/fuel-stock/logs?page=1&page_size=20", "host": ["{{baseUrl}}"], "path": ["api","fuel-stock","logs"], "query":[{"key":"page","value":"1"},{"key":"page_size","value":"20"}] } } }
+      ]
+    },
+    {
+      "name": "Aircraft Filling",
+      "item": [
+        {
+          "name": "List",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const items = pm.response.json().items || [];",
+                  "  if (items.length) pm.collectionVariables.set('fillingId', items[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/aircraft-filling?page=1&page_size=20", "host": ["{{baseUrl}}"], "path": ["api","aircraft-filling"], "query":[{"key":"page","value":"1"},{"key":"page_size","value":"20"}] } }
+        },
+        {
+          "name": "Create (auto-deducts stock)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"aircraft_id\": \"{{aircraftId}}\",\n  \"airport_id\": \"{{airportId}}\",\n  \"fuel_type\": \"ATF\",\n  \"quantity_filled\": 15000,\n  \"fuel_rate\": 99.5,\n  \"filling_datetime\": \"2026-05-24T14:30:00Z\",\n  \"flight_number\": \"AI142\",\n  \"remarks\": \"Postman test fueling\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/aircraft-filling", "host": ["{{baseUrl}}"], "path": ["api","aircraft-filling"] }
+          }
+        },
+        { "name": "Get by ID", "request": { "method": "GET",    "url": { "raw": "{{baseUrl}}/api/aircraft-filling/{{fillingId}}", "host": ["{{baseUrl}}"], "path": ["api","aircraft-filling","{{fillingId}}"] } } },
+        { "name": "Delete",    "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/api/aircraft-filling/{{fillingId}}", "host": ["{{baseUrl}}"], "path": ["api","aircraft-filling","{{fillingId}}"] } } }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        { "name": "Fuel purchases",          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/reports/fuel-purchases",   "host": ["{{baseUrl}}"], "path": ["api","reports","fuel-purchases"] } } },
+        { "name": "Fuel consumption",        "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/reports/fuel-consumption", "host": ["{{baseUrl}}"], "path": ["api","reports","fuel-consumption"] } } },
+        { "name": "Airport stock",           "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/reports/airport-stock",    "host": ["{{baseUrl}}"], "path": ["api","reports","airport-stock"] } } },
+        { "name": "Aircraft history",        "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/reports/aircraft-history?aircraft_id={{aircraftId}}", "host": ["{{baseUrl}}"], "path": ["api","reports","aircraft-history"], "query":[{"key":"aircraft_id","value":"{{aircraftId}}"}] } } },
+        { "name": "Vendor",                  "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/reports/vendor?agent_id={{agentId}}", "host": ["{{baseUrl}}"], "path": ["api","reports","vendor"], "query":[{"key":"agent_id","value":"{{agentId}}"}] } } },
+        { "name": "Export — purchases xlsx", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/reports/export?type=purchases&format=xlsx", "host": ["{{baseUrl}}"], "path": ["api","reports","export"], "query":[{"key":"type","value":"purchases"},{"key":"format","value":"xlsx"}] } } },
+        { "name": "Export — purchases pdf",  "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/reports/export?type=purchases&format=pdf",  "host": ["{{baseUrl}}"], "path": ["api","reports","export"], "query":[{"key":"type","value":"purchases"},{"key":"format","value":"pdf"}]  } } },
+        { "name": "Export — purchases csv",  "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/reports/export?type=purchases&format=csv",  "host": ["{{baseUrl}}"], "path": ["api","reports","export"], "query":[{"key":"type","value":"purchases"},{"key":"format","value":"csv"}]  } } }
+      ]
+    },
+    {
+      "name": "PDF Generation",
+      "item": [
+        { "name": "Purchase invoice",   "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/pdf/purchase/{{purchaseId}}", "host": ["{{baseUrl}}"], "path": ["api","pdf","purchase","{{purchaseId}}"] } } },
+        { "name": "Filling receipt",    "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/pdf/filling/{{fillingId}}",   "host": ["{{baseUrl}}"], "path": ["api","pdf","filling","{{fillingId}}"] } } },
+        { "name": "Stock report",       "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/pdf/stock-report",            "host": ["{{baseUrl}}"], "path": ["api","pdf","stock-report"] } } },
+        { "name": "Analytics report",   "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/pdf/analytics",                "host": ["{{baseUrl}}"], "path": ["api","pdf","analytics"] } } }
+      ]
+    },
+    {
+      "name": "Users (admin only)",
+      "item": [
+        { "name": "List",     "request": { "method": "GET",    "url": { "raw": "{{baseUrl}}/api/users?page=1&page_size=20", "host": ["{{baseUrl}}"], "path": ["api","users"], "query":[{"key":"page","value":"1"},{"key":"page_size","value":"20"}] } } },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"new.user@aerofuel.com\",\n  \"username\": \"newuser\",\n  \"password\": \"StrongPass@123\",\n  \"full_name\": \"New User\",\n  \"role\": \"operator\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/users", "host": ["{{baseUrl}}"], "path": ["api","users"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit Logs (admin only)",
+      "item": [
+        { "name": "List", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/audit-logs?page=1&page_size=20", "host": ["{{baseUrl}}"], "path": ["api","audit-logs"], "query":[{"key":"page","value":"1"},{"key":"page_size","value":"20"}] } } }
+      ]
+    }
+  ]
+}

@@ -19,6 +19,8 @@ stock levels, aircraft fueling operations, and generating reports.
   - [Windows (PowerShell)](#windows-powershell)
   - [macOS / Linux (bash/zsh)](#macos--linux-bashzsh)
 - [Local Development — Frontend](#local-development--frontend)
+- [Backend Debugging with Postman](#backend-debugging-with-postman) ⭐
+- [Backend Debugging in VS Code (breakpoints)](#backend-debugging-in-vs-code-breakpoints)
 - [Environment Variables](#environment-variables)
 - [Demo Data](#demo-data)
 - [Default Login](#default-login)
@@ -195,6 +197,185 @@ For LAN access from other devices on your Wi-Fi:
 npm run dev -- --host
 # or set `server.host: true` in vite.config.js (already enabled in this repo)
 ```
+
+---
+
+## Backend Debugging with Postman
+
+End-to-end debug loop: spin up the database in Docker, run the backend
+locally with hot-reload, and drive every endpoint from Postman.
+
+### Step 1 — Start PostgreSQL (Docker)
+
+```bash
+# Reuse if already created, otherwise create
+docker start fuel_postgres 2>/dev/null || docker run -d \
+  --name fuel_postgres \
+  -e POSTGRES_USER=fuel_user \
+  -e POSTGRES_PASSWORD=fuel_pass \
+  -e POSTGRES_DB=fuel_management \
+  -p 5432:5432 \
+  postgres:16-alpine
+
+# Confirm it's ready (returns "accepting connections")
+docker exec fuel_postgres pg_isready -U fuel_user -d fuel_management
+```
+
+### Step 2 — Set up Python venv & install deps (one-time)
+
+**Windows PowerShell:**
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+**macOS / Linux:**
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Step 3 — Create / verify `backend/.env`
+
+```bash
+# From repo root — one-time:
+python scripts/setup.py        # creates backend/.env from .env.example
+```
+Then open `backend/.env` and confirm:
+```env
+DATABASE_URL=postgresql+asyncpg://fuel_user:fuel_pass@localhost:5432/fuel_management
+SECRET_KEY=<any 32+ char string>
+```
+> If `DATABASE_URL` says `@db:5432` it's the Docker-Compose value — change `db` to `localhost` when running the backend locally.
+
+### Step 4 — (Optional) Seed demo data
+
+```bash
+# 60 days of realistic transactions — from repo root, venv activated
+python scripts/seed_demo.py
+
+# Or wipe & reseed
+python scripts/seed_demo.py --reset
+
+# With an explicit connection string (overrides .env)
+python scripts/seed_demo.py --db-url postgresql://fuel_user:fuel_pass@localhost:5432/fuel_management
+```
+
+### Step 5 — Start the backend with hot-reload
+
+```bash
+cd backend
+# venv must be activated
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+You should see:
+```
+INFO:     Starting AeroFuel Management System v1.0.0
+INFO:     Upload directory ready: .../backend/uploads
+INFO:     Initializing database schema (9 tables)
+INFO:     Database schema ready.
+INFO:     Default admin user already present, skipping seed.
+INFO:     AeroFuel Management System startup complete.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+```
+
+Quick sanity check from another terminal:
+```bash
+curl http://localhost:8000/health
+# → {"status":"healthy","service":"AeroFuel Management System","version":"1.0.0"}
+```
+
+### Step 6 — Import Postman collection
+
+1. Open Postman → **File → Import**
+2. Pick **`docs/postman_collection.json`** from this repo
+3. The collection appears as **AeroFuel Management API** with these folders:
+   - Health
+   - Auth
+   - Dashboard
+   - Fuel Agents
+   - Airports
+   - Aircrafts
+   - Fuel Purchases
+   - Fuel Stock
+   - Aircraft Filling
+   - Reports
+   - PDF Generation
+   - Users (admin only)
+   - Audit Logs (admin only)
+
+### Step 7 — Authenticate (one-click)
+
+1. Open **Auth → Login (admin)** request
+2. Click **Send**
+3. The included test script automatically stores `access_token` + `refresh_token` in collection variables
+4. Every other request inherits **Bearer `{{accessToken}}`** auth at the collection level
+
+```
+Response 200 OK
+{
+  "access_token": "eyJhbGc...",
+  "refresh_token": "eyJhbGc...",
+  "token_type": "bearer"
+}
+```
+
+When the access token expires (60 min default), run **Auth → Refresh token** to get a new one — also auto-saved.
+
+### Step 8 — Try the full happy path
+
+The collection's list endpoints auto-save their first row's UUID into collection variables (`agentId`, `airportId`, `aircraftId`, `purchaseId`, `fillingId`), so you can chain requests without copy/paste:
+
+```
+1. Auth → Login (admin)             ← saves accessToken, refreshToken
+2. Fuel Agents → List               ← saves agentId
+3. Airports → List                  ← saves airportId
+4. Aircrafts → List                 ← saves aircraftId
+5. Fuel Purchases → Create          ← uses {{agentId}} and {{airportId}}
+6. Fuel Purchases → List            ← saves purchaseId
+7. PDF Generation → Purchase invoice ← uses {{purchaseId}}, returns PDF
+8. Aircraft Filling → Create        ← deducts stock
+9. Fuel Stock → For one airport     ← see new stock level
+10. Reports → Export — purchases xlsx ← downloads .xlsx file
+```
+
+### Tips
+
+- **Tail the backend log** in another terminal while clicking through Postman — every request is printed with its status code, so you'll see exactly which handler ran.
+- **Set breakpoints**: stop the terminal uvicorn and use VS Code's debug config instead (next section).
+- **Interactive Swagger** is at <http://localhost:8000/docs> and lets you try any endpoint without leaving the browser. ReDoc is at <http://localhost:8000/redoc>.
+- **CORS** is wide open (`allow_origins=["*"]`) so Postman / any HTTP client works regardless of origin.
+
+---
+
+## Backend Debugging in VS Code (breakpoints)
+
+The repo includes `.vscode/launch.json` with three ready-to-use debug
+configurations:
+
+| Configuration | Use when |
+|---------------|----------|
+| **FastAPI: uvicorn (debug)** | Normal debugging with hot-reload |
+| **FastAPI: uvicorn (no reload, easier breakpoints)** | Breakpoints inside route handlers — `--reload` sometimes restarts before a breakpoint hits |
+| **Seed: demo data** | Step through `scripts/seed_demo.py` |
+
+### Steps
+
+1. Open the repo root in VS Code
+2. Install the **Python** + **Python Debugger** extensions if you haven't
+3. Make sure `backend/.venv` exists (see Step 2 above) and `backend/.env` is set up
+4. Make sure PostgreSQL is running (Step 1 above)
+5. Press **F5** or open the **Run and Debug** panel and pick a configuration
+6. Set breakpoints anywhere — `app/routers/*.py`, `app/services/*.py`, `app/utils/auth.py`, etc.
+7. Hit endpoints from Postman; execution pauses at your breakpoints with full variable inspection
+
+VS Code reads `backend/.env` automatically (via `envFile` in `launch.json`), so the same `DATABASE_URL` you use locally works in the debugger.
 
 ---
 
