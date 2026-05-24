@@ -47,8 +47,8 @@ const typeChipProps = {
 };
 
 const AirportStockCard = ({ stock }) => {
-  const pct = getStockPercentage(stock.current_stock, stock.capacity);
-  const color = getStockLevelColor(stock.current_stock, stock.capacity);
+  const pct = getStockPercentage(stock.current_stock, stock.fuel_storage_capacity);
+  const color = getStockLevelColor(stock.current_stock, stock.fuel_storage_capacity);
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent sx={{ p: 2 }}>
@@ -89,7 +89,7 @@ const AirportStockCard = ({ stock }) => {
             {pct.toFixed(0)}%
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {formatLiters(stock.capacity)}
+            {formatLiters(stock.fuel_storage_capacity)}
           </Typography>
         </Box>
       </CardContent>
